@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speech Recognition Example with Buttons</title>
+  <style>
+        body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f0f0f0; /* Background color */
+      color: #008000; /* Text color (green) */
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      color: #008000; /* Header text color (green) */
+    }
+
+    button {
+      background-color: #008000; /* Button background color (green) */
+      color: #ffffff; /* Button text color (white) */
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 5px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+    }
+
+    button:disabled {
+      background-color: #cccccc; /* Disabled button background color (light gray) */
+      color: #666666; /* Disabled button text color (dark gray) */
+      cursor: not-allowed;
+    }
+
+    #output {
+      background-color: #ffffff; /* Output background color (white) */
+      padding: 20px;
+      margin-top: 20px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <h1>Transcrición de audio</h1>
+  <button id="startButton">Comenzar</button>
+  <button id="stopButton" disabled>Detener</button>
+  <p id="output"></p>
+
+  <script>
+    // Check if the browser supports the SpeechRecognition API
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'es-ES';
+
+      // Reference to the buttons
+      const startButton = document.getElementById('startButton');
+      const stopButton = document.getElementById('stopButton');
+
+      // Set up event listeners for the buttons
+      startButton.addEventListener('click', () => {
+        recognition.start();
+        startButton.disabled = true;
+        stopButton.disabled = false;
+      });
+
+      stopButton.addEventListener('click', () => {
+        recognition.stop();
+        startButton.disabled = false;
+        stopButton.disabled = true;
+      });
+
+      // Define the callback function for when speech is recognized
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById('output').textContent = 'Resultado: ' + transcript;
+      };
+
+      // Define the callback function for errors
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+      };
+    } else {
+      alert('Speech recognition is not supported in your browser. Please use a modern browser like Chrome or Firefox.');
+    }
+  </script>
+</body>
+</html>
