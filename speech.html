@@ -4,8 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Speech Recognition Example with Buttons</title>
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
   <style>
-        body {
+
+    .ql-container {
+      margin-top: 40px;
+    }
+    body {
       font-family: 'Arial', sans-serif;
       background-color: #f0f0f0; /* Background color */
       color: #008000; /* Text color (green) */
@@ -42,47 +47,160 @@
       border-radius: 5px;
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
+
   </style>
 </head>
 <body>
-  <h1>Transcrición de audio</h1>
-  <button id="startButton">Comenzar</button>
-  <button id="stopButton" disabled>Detener</button>
-  <p id="output"></p>
+  <h1>Transcripción de audio</h1>
+  <button id="startButton" aria-label="Comenzar transcripción">Comenzar</button>
+  <button id="stopButton" disabled aria-label="Detener transcripción">Detener</button>
+  <button id="continueButton" disabled aria-label="Continuar transcripción">Continuar</button>
+  <button id="editButton" disabled aria-label="Editar resultado">Editar</button>
+  <button id="clearButton" disabled aria-label="Limpiar resultado">Limpiar</button>
+  <button id="downloadTextButton" disabled aria-label="Descargar como Texto">Descargar Texto</button>
+  <button id="downloadPdfButton" disabled aria-label="Descargar como PDF">Descargar PDF</button>
+  <button id="saveButton">Guardar</button>
+  <div id="editor"></div>
+
+  <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
   <script>
-    // Check if the browser supports the SpeechRecognition API
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
       const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
       recognition.lang = 'es-ES';
 
-      // Reference to the buttons
       const startButton = document.getElementById('startButton');
       const stopButton = document.getElementById('stopButton');
+      const continueButton = document.getElementById('continueButton');
+      const editButton = document.getElementById('editButton');
+      const clearButton = document.getElementById('clearButton');
+      const downloadTextButton = document.getElementById('downloadTextButton');
+      const downloadPdfButton = document.getElementById('downloadPdfButton');
+      const saveButton = document.getElementById('saveButton');
+      const currentUrl = window.location.href;
 
-      // Set up event listeners for the buttons
-      startButton.addEventListener('click', () => {
+      // Crea una instancia de URLSearchParams y pasa la cadena de consulta (query string)
+      const searchParams = new URLSearchParams(currentUrl);
+
+      const editor = new Quill('#editor', {
+        theme: 'snow',
+        modules: {
+          toolbar: [
+            ['bold', 'italic', 'underline', 'strike'],
+            ['image', 'link'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+            ['clean']
+          ]
+        }
+      });
+      let recognitionIsRunning = false;
+
+      const startRecognition = () => {
         recognition.start();
+        recognitionIsRunning = true;
         startButton.disabled = true;
         stopButton.disabled = false;
-      });
-
-      stopButton.addEventListener('click', () => {
-        recognition.stop();
-        startButton.disabled = false;
-        stopButton.disabled = true;
-      });
-
-      // Define the callback function for when speech is recognized
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        document.getElementById('output').textContent = 'Resultado: ' + transcript;
+        continueButton.disabled = true;
+        editButton.disabled = true;
+        clearButton.disabled = true;
+        downloadTextButton.disabled = true;
+        downloadPdfButton.disabled = true;
       };
 
-      // Define the callback function for errors
+      const stopRecognition = () => {
+        recognition.stop();
+        recognitionIsRunning = false;
+        startButton.disabled = false;
+        stopButton.disabled = true;
+        continueButton.disabled = false;
+        editButton.disabled = false;
+        clearButton.disabled = false;
+        downloadTextButton.disabled = false;
+        downloadPdfButton.disabled = false;
+      };
+
+      const continueRecognition = () => {
+        if (!recognitionIsRunning) {
+          startRecognition();
+        }
+      };
+
+      startButton.addEventListener('click', startRecognition);
+      startButton.addEventListener('keydown', (e) => { if (e.key === 'Enter') startRecognition(); });
+
+      stopButton.addEventListener('click', stopRecognition);
+      stopButton.addEventListener('keydown', (e) => { if (e.key === 'Enter') stopRecognition(); });
+
+      continueButton.addEventListener('click', continueRecognition);
+      continueButton.addEventListener('keydown', (e) => { if (e.key === 'Enter') continueRecognition(); });
+
+      editButton.addEventListener('click', () => {
+        // Habilita/deshabilita la edición Quill
+        editor.enable();
+        editor.focus();
+      });
+
+      clearButton.addEventListener('click', () => {
+        // Limpia el contenido de Quill
+        editor.deleteText(0, editor.getLength());
+        clearButton.disabled = true;
+      });
+
+      downloadTextButton.addEventListener('click', () => {
+        const textContent = editor.getText();
+        downloadFile('transcripcion.txt', textContent);
+      });
+
+      downloadPdfButton.addEventListener('click', () => {
+        // Convierte el contenido de Quill a una imagen y descarga como PDF
+        const quillContent = document.querySelector('.ql-editor');
+        html2canvas(quillContent).then((canvas) => {
+          const pdfContent = canvas.toDataURL('image/png');
+          downloadFile('transcripcion.pdf', pdfContent);
+        });
+      });
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        // Agrega el texto al editor Quill
+        editor.clipboard.dangerouslyPasteHTML(editor.getLength(), `<p>${transcript}</p>`);
+        clearButton.disabled = false;
+      };
+
       recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
       };
+
+      recognition.onend = () => {
+        recognitionIsRunning = false;
+        continueButton.disabled = false;
+        editButton.disabled = false;
+        clearButton.disabled = false;
+        downloadTextButton.disabled = false;
+        downloadPdfButton.disabled = false;
+      };
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          stopRecognition();
+        }
+      });
+
+      function downloadFile(fileName, content) {
+        const blob = new Blob([content], { type: 'text/plain' });
+        saveAs(blob, fileName);
+      }
+
+      saveButton.addEventListener('click', () => {
+        if (editor.getText().toString().length > 3) {
+          alert(searchParams.get('token'))
+        } else {
+          alert("No hay nada que guardar, el editor no puede estar vacio.")
+        }
+      })
     } else {
       alert('Speech recognition is not supported in your browser. Please use a modern browser like Chrome or Firefox.');
     }
