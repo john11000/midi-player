@@ -2,7 +2,7 @@ const url = new URL(window.location.href);
 const params = url.searchParams;
 const token = params.get('token');
 const file = params.get('file');
-const url_api =  'http://localhost:5000/admin/transcript'
+const url_api =  'https://composer-music-python-services.vercel.app/admin/transcript'
 async function sendRequest(textEditor) {
     const urlApiSave = `${url_api}/save`;
     const body = JSON.stringify({
