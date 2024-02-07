@@ -5,7 +5,6 @@ async function getBase64Midi() {
     const url = 'https://composer-music-python-services.vercel.app/admin/music/list/uuid/' + query;
     const responseApi = await fetch(url);
     const data = await responseApi.json();
-    debugger
     return data.data[0].midi_data
 }
 
@@ -30,5 +29,3 @@ $( document ).ready(function() {
         width: 250
     });
 });
-
-startPlaying()
